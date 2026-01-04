@@ -23,7 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 
 **Скажи пользователю:**
 
-> Для авторизации через Google нужно создать приложение в Google Cloud Console. Я помогу вам пошагово.
+> Для авторизации через Google нужно создать приложение в Google Cloud Console. Я помогу пошагово:
 >
 > 1. Откройте [Google Cloud Console](https://console.cloud.google.com/)
 > 2. Создайте новый проект (или выберите существующий)
@@ -32,19 +32,17 @@ CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 >    - App name: название вашего приложения
 >    - User support email: ваш email
 >    - Developer contact: ваш email
-> 5. На странице Scopes добавьте: `openid`, `email`, `profile`
-> 6. **ВАЖНО:** На странице Test users добавьте свой email (пока приложение в режиме Testing, только эти пользователи могут входить)
-> 7. Перейдите в **Credentials** → **Create Credentials** → **OAuth client ID**
-> 8. Выберите **Web application**
-> 9. Добавьте в **Authorized JavaScript origins**:
->    - `https://preview--{project}.poehali.dev` (для разработки)
->    - ваш продакшн домен (если есть)
-> 10. Добавьте в **Authorized redirect URIs**:
->     - `https://preview--{project}.poehali.dev/auth/google/callback`
->     - продакшн redirect URI (если есть)
-> 11. Нажмите Create и скопируйте **Client ID** и **Client Secret**
+> 5. После создания вы окажетесь на странице **OAuth Overview** — нажмите **"Create OAuth client"**
+> 6. Выберите **Web application**
+> 7. Добавьте в **Authorized JavaScript origins**:
+>    - `https://{ваш-домен}` (например: `https://coder.arnld.ai`)
+> 8. Добавьте в **Authorized redirect URIs**:
+>    - `https://{ваш-домен}/auth/google/callback` (например: `https://coder.arnld.ai/auth/google/callback`)
+> 9. Нажмите **Create** и скопируйте **Client ID** и **Client Secret**
 >
-> Пришлите мне Client ID и Client Secret когда будут готовы.
+> Пришлите мне Client ID и Client Secret когда будут готовы!
+>
+> **Примечание:** Пока приложение в режиме Testing, войти смогут только пользователи добавленные в Test users (Audience → Add users).
 
 ### Шаг 3: Добавление секретов
 
@@ -93,41 +91,33 @@ JWT_SECRET=<сгенерируй сам: 64 случайных символа>
    - **App name** — название приложения
    - **User support email** — email поддержки
    - **Developer contact email** — email разработчика
-4. Нажми **"Save and Continue"**
-5. На странице Scopes нажми **"Add or Remove Scopes"**:
-   - Выбери `openid`, `email`, `profile`
-6. Нажми **"Save and Continue"**
-7. **ВАЖНО:** На странице Test users добавь свой email — пока приложение в Testing, только эти пользователи могут входить!
+4. Нажми **"Create"** (или "Save and Continue")
+5. Ты окажешься на странице **OAuth Overview**
 
 ### Шаг 3: Создание OAuth credentials
 
-1. Перейди в **"APIs & Services"** → **"Credentials"**
-2. Нажми **"+ Create Credentials"** → **"OAuth client ID"**
-3. Выбери **"Web application"**
-4. Введи название
-5. **Authorized JavaScript origins** — добавь ОБА домена:
+1. На странице **OAuth Overview** нажми **"Create OAuth client"**
+2. Выбери **"Web application"**
+3. Введи название
+4. **Authorized JavaScript origins** — добавь домен(ы):
+   - `https://your-domain.com`
+5. **Authorized redirect URIs** — добавь (должен ТОЧНО совпадать с `GOOGLE_REDIRECT_URI`):
+   - `https://your-domain.com/auth/google/callback`
+6. Нажми **"Create"**
+7. Скопируй **Client ID** и **Client Secret**
 
-| Среда | Origin |
-|-------|--------|
-| **Разработка** | `https://preview--{project}.poehali.dev` |
-| **Продакшн** | `https://your-domain.com` или `https://{project}.poehali.dev` |
+### Шаг 4: Test users (пока в режиме Testing)
 
-6. **Authorized redirect URIs** — добавь ОБА (должны ТОЧНО совпадать с `GOOGLE_REDIRECT_URI`):
+Пока приложение в режиме **Testing**, войти могут только добавленные пользователи:
 
-| Среда | Redirect URI |
-|-------|--------------|
-| **Разработка** | `https://preview--{project}.poehali.dev/auth/google/callback` |
-| **Продакшн** | `https://your-domain.com/auth/google/callback` |
+1. Перейди в **Audience** (в левом меню)
+2. Нажми **"Add users"**
+3. Добавь email пользователей для тестирования
 
-7. Нажми **"Create"**
-8. Скопируй **Client ID** и **Client Secret**
+### Шаг 5: Публикация (когда готов к продакшну)
 
-### Шаг 4: Публикация приложения (когда готов к продакшну)
-
-Пока приложение в режиме **Testing**, только добавленные Test users могут входить.
-
-Для публикации:
-1. Перейди в **"OAuth consent screen"**
+Для публичного доступа:
+1. Перейди в **OAuth consent screen**
 2. Нажми **"Publish App"**
 3. Подтверди публикацию
 
