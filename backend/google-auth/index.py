@@ -1,4 +1,5 @@
 """Google OAuth authentication handler."""
+import base64
 import json
 import os
 import secrets
@@ -232,7 +233,6 @@ def handle_callback(event: dict, origin: str) -> dict:
     """Handle Google OAuth callback."""
     body_str = event.get('body', '{}')
     if event.get('isBase64Encoded'):
-        import base64
         body_str = base64.b64decode(body_str).decode('utf-8')
 
     try:
@@ -351,7 +351,6 @@ def handle_refresh(event: dict, origin: str) -> dict:
     """Refresh access token."""
     body_str = event.get('body', '{}')
     if event.get('isBase64Encoded'):
-        import base64
         body_str = base64.b64decode(body_str).decode('utf-8')
 
     try:
@@ -420,7 +419,6 @@ def handle_logout(event: dict, origin: str) -> dict:
     """Logout user by invalidating refresh token."""
     body_str = event.get('body', '{}')
     if event.get('isBase64Encoded'):
-        import base64
         body_str = base64.b64decode(body_str).decode('utf-8')
 
     try:
