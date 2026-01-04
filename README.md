@@ -19,6 +19,16 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 ```
 
+**Проверь совместимость столбцов!** Функция работает с полями:
+- `google_id` — VARCHAR, может быть NULL
+- `email` — VARCHAR, может быть NULL
+- `name` — VARCHAR, может быть NULL
+- `avatar_url` — TEXT, может быть NULL
+- `email_verified` — BOOLEAN, DEFAULT FALSE
+- `created_at`, `updated_at`, `last_login_at` — TIMESTAMP
+
+Если какой-то столбец имеет `NOT NULL` без `DEFAULT` — функция упадёт при вставке!
+
 ### Шаг 2: Сопровождение пользователя в Google Cloud Console
 
 **Скажи пользователю:**
