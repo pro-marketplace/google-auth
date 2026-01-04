@@ -8,26 +8,91 @@ SSO авторизация через Google. **1 функция** с роути
 
 ---
 
-## Для ассистента: чеклист интеграции
+# [AUTH] Общее для виджетов авторизации
+
+## Логика привязки аккаунтов
+
+Функция автоматически связывает аккаунты по email:
+
+1. **Поиск по provider_id** (google_id/vk_id) → если найден, логиним
+2. **Поиск по email** → если найден, привязываем провайдера к существующему аккаунту
+3. **Новый пользователь** → создаём запись
+
+Это позволяет пользователю войти через любой провайдер, если email совпадает.
+
+## Требования к базе данных
+
+Функция работает с полями таблицы `users`:
+
+| Поле | Тип | Требования |
+|------|-----|------------|
+| `google_id` / `vk_id` | VARCHAR(50) | Может быть NULL |
+| `email` | VARCHAR(255) | Может быть NULL |
+| `name` | VARCHAR(255) | Может быть NULL |
+| `avatar_url` | TEXT | Может быть NULL |
+| `email_verified` | BOOLEAN | DEFAULT FALSE/TRUE |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| `updated_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
+| `last_login_at` | TIMESTAMP | Может быть NULL |
+
+**⚠️ Если столбец имеет `NOT NULL` без `DEFAULT` — функция упадёт при вставке!**
+
+## Добавление секретов
+
+**ОБЯЗАТЕЛЬНО вызови тулу `put_secret` для КАЖДОГО секрета!**
+
+```python
+put_secret("PROVIDER_CLIENT_ID", "<от пользователя>")
+put_secret("PROVIDER_CLIENT_SECRET", "<от пользователя>")
+put_secret("PROVIDER_REDIRECT_URI", "https://{домен}/auth/{provider}/callback")
+put_secret("JWT_SECRET", "<сгенерируй сам>")
+```
+
+- Вызывай `put_secret` для КАЖДОГО секрета отдельно
+- **JWT_SECRET генерируй сам** (64 hex символа), не спрашивай у пользователя
+- Покажи пользователю в чате каждый вызов тулы
+
+## После установки скажи пользователю
+
+> ✅ Авторизация настроена!
+>
+> **Важно:**
+> - Проверяйте авторизацию **в отдельной вкладке**, не в редакторе
+> - Если email уже использовался — аккаунт автоматически привяжется
+
+## API (общий для всех провайдеров)
+
+```
+GET  ?action=auth-url  — получить URL для авторизации
+POST ?action=callback  — обмен code на токены (body: { code, ... })
+POST ?action=refresh   — обновление токена (body: { refresh_token })
+POST ?action=logout    — выход (body: { refresh_token })
+```
+
+## Безопасность
+
+- JWT access tokens (15 мин)
+- Refresh tokens хешируются (SHA256) перед сохранением
+- Автоочистка протухших токенов при каждом запросе
+- CSRF protection через state параметр
+- Параметризованные SQL-запросы
+- Валидация JWT_SECRET (минимум 32 символа)
+- CORS ограничение через `ALLOWED_ORIGINS`
+- Скрытие внутренних ошибок от клиента
+
+---
+
+# [GOOGLE] Специфичное для Google Auth
+
+## Чеклист интеграции
 
 ### Шаг 1: Подготовка базы данных
 
-Проверь/добавь столбец `google_id` в таблицу users:
 ```sql
 ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(50);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 ```
-
-**Проверь совместимость столбцов!** Функция работает с полями:
-- `google_id` — VARCHAR, может быть NULL
-- `email` — VARCHAR, может быть NULL
-- `name` — VARCHAR, может быть NULL
-- `avatar_url` — TEXT, может быть NULL
-- `email_verified` — BOOLEAN, DEFAULT FALSE
-- `created_at`, `updated_at`, `last_login_at` — TIMESTAMP
-
-Если какой-то столбец имеет `NOT NULL` без `DEFAULT` — функция упадёт при вставке!
 
 ### Шаг 2: Сопровождение пользователя в Google Cloud Console
 
@@ -54,45 +119,27 @@ CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 > 12. Нажмите на созданный клиент — там будет **Client secret**
 >
 > Пришлите мне **Client ID** и **Client Secret** когда будут готовы!
->
-> **Примечание:** Пока приложение в режиме Testing, войти смогут только пользователи добавленные в Test users (Audience → Add users).
 
 ### Шаг 3: Добавление секретов
 
-**ОБЯЗАТЕЛЬНО вызови тулу `put_secret` для КАЖДОГО секрета!**
+Когда пользователь пришлёт Client ID и Client Secret:
 
-Когда пользователь пришлёт Client ID и Client Secret, вызови тулу для каждого:
-
-```
+```python
 put_secret("GOOGLE_CLIENT_ID", "<Client ID от пользователя>")
 put_secret("GOOGLE_CLIENT_SECRET", "<Client Secret от пользователя>")
 put_secret("GOOGLE_REDIRECT_URI", "https://{домен-пользователя}/auth/google/callback")
-put_secret("JWT_SECRET", "<сгенерируй сам: 64 случайных hex символа>")
+put_secret("JWT_SECRET", "<сгенерируй: 64 hex символа>")
 ```
-
-**Важно:**
-- Вызывай `put_secret` для КАЖДОГО секрета отдельно
-- **JWT_SECRET генерируй сам** (например: `openssl rand -hex 32`), не спрашивай у пользователя
-- Покажи пользователю в чате каждый вызов тулы — это безопасный способ добавления секретов
 
 ### Шаг 4: Создание страниц
 
 1. **Страница с кнопкой входа** — добавь `GoogleLoginButton`
-2. **Страница callback** `/auth/google/callback` — обработка редиректа от Google
+2. **Страница callback** `/auth/google/callback` — обработка редиректа
 3. **Страница профиля** — показать данные пользователя после входа
-
-### Шаг 5: После установки скажи пользователю
-
-> ✅ Авторизация через Google настроена!
->
-> **Важно:**
-> - Проверяйте авторизацию **в отдельной вкладке**, не в редакторе
-> - Пока приложение в режиме Testing, войти могут только пользователи из списка Test Users
-> - Для публичного доступа нужно опубликовать приложение в Google Cloud Console (OAuth consent screen → Publish App)
 
 ---
 
-## Создание приложения в Google Cloud Console
+## Создание приложения в Google Cloud Console (детально)
 
 ### Шаг 1: Создание проекта
 
@@ -104,105 +151,33 @@ put_secret("JWT_SECRET", "<сгенерируй сам: 64 случайных he
 ### Шаг 2: Настройка OAuth consent screen
 
 1. В меню выбери **"APIs & Services"** → **"OAuth consent screen"**
-2. Выбери **"External"** (для публичных приложений)
+2. Выбери **"External"**
 3. Заполни обязательные поля:
    - **App name** — название приложения
    - **User support email** — email поддержки
    - **Developer contact email** — email разработчика
-4. Нажми **"Create"** (или "Save and Continue")
+4. Нажми **"Create"**
 5. Ты окажешься на странице **OAuth Overview**
 
 ### Шаг 3: Создание OAuth credentials
 
-1. На странице **OAuth Overview** нажми **"Create OAuth client"**
+1. Нажми **"Create OAuth client"**
 2. Выбери **"Web application"**
-3. Введи название
-4. **Authorized JavaScript origins** — добавь домен(ы):
-   - `https://your-domain.com`
-5. **Authorized redirect URIs** — добавь (должен ТОЧНО совпадать с `GOOGLE_REDIRECT_URI`):
-   - `https://your-domain.com/auth/google/callback`
-6. Нажми **"Create"**
+3. **Authorized JavaScript origins**: `https://your-domain.com`
+4. **Authorized redirect URIs**: `https://your-domain.com/auth/google/callback`
+5. Нажми **"Create"**
 
 ### Шаг 4: Получение Client ID и Client Secret
 
-После создания появится модалка с **Client ID** — скопируй его (иконка копирования справа).
-
-**Для получения Client Secret:**
-1. Закрой модалку (нажми OK)
-2. В левом меню перейди в **Clients**
-3. Найди созданный клиент и нажми на него
-4. На странице клиента будет **Client ID** и **Client secret** — скопируй оба
-
-### Шаг 5: Test users (пока в режиме Testing)
-
-Пока приложение в режиме **Testing**, войти могут только добавленные пользователи:
-
-1. Перейди в **Audience** (в левом меню)
-2. Нажми **"Add users"**
-3. Добавь email пользователей для тестирования
-
-### Шаг 6: Публикация (когда готов к продакшну)
-
-Для публичного доступа:
-1. Перейди в **OAuth consent screen**
-2. Нажми **"Publish App"**
-3. Подтверди публикацию
+1. В модалке скопируй **Client ID** (иконка справа)
+2. Нажми **OK**
+3. Перейди в **Clients** (левое меню)
+4. Нажми на созданный клиент
+5. Скопируй **Client secret**
 
 ---
 
-## Установка
-
-### 1. База данных
-
-```sql
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    google_id VARCHAR(50) UNIQUE,
-    email VARCHAR(255),
-    name VARCHAR(255),
-    avatar_url TEXT,
-    email_verified BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login_at TIMESTAMP
-);
-
-CREATE TABLE refresh_tokens (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    token_hash VARCHAR(64) NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_users_google_id ON users(google_id);
-CREATE INDEX idx_refresh_tokens_hash ON refresh_tokens(token_hash);
-```
-
-### 2. Переменные окружения
-
-| Переменная | Описание | Где взять |
-|------------|----------|-----------|
-| `GOOGLE_CLIENT_ID` | Client ID | Пользователь даст после создания OAuth credentials |
-| `GOOGLE_CLIENT_SECRET` | Client Secret | Пользователь даст после создания OAuth credentials |
-| `GOOGLE_REDIRECT_URI` | Redirect URI | `https://preview--{project}.poehali.dev/auth/google/callback` |
-| `JWT_SECRET` | Секрет для токенов (мин. 32 символа) | **Сгенерируй сам!** |
-| `ALLOWED_ORIGINS` | (опционально) Разрешённые домены | `https://example.com,https://app.example.com` |
-
----
-
-## API
-
-```
-GET  ?action=auth-url  — получить URL для авторизации Google
-POST ?action=callback  — обмен code на токены (body: { code })
-POST ?action=refresh   — обновление токена (body: { refresh_token })
-POST ?action=logout    — выход (body: { refresh_token })
-```
-
----
-
-## Frontend
+## Frontend компоненты
 
 | Файл | Описание |
 |------|----------|
@@ -210,8 +185,9 @@ POST ?action=logout    — выход (body: { refresh_token })
 | `GoogleLoginButton.tsx` | Кнопка "Войти через Google" |
 | `UserProfile.tsx` | Профиль пользователя |
 
+### Пример использования
+
 ```tsx
-// Получи URL функции после деплоя
 const AUTH_URL = "https://functions.poehali.dev/xxx-google-auth";
 
 const auth = useGoogleAuth({
@@ -233,8 +209,6 @@ if (auth.isAuthenticated && auth.user) {
 ```
 
 ### Страница callback
-
-Создай страницу `/auth/google/callback`:
 
 ```tsx
 // app/auth/google/callback/page.tsx
@@ -260,7 +234,7 @@ export default function GoogleCallbackPage() {
   useEffect(() => {
     auth.handleCallback().then((success) => {
       if (success) {
-        router.push("/profile"); // Редирект на страницу профиля
+        router.push("/profile");
       }
     });
   }, []);
@@ -283,21 +257,8 @@ export default function GoogleCallbackPage() {
 3. Frontend сохраняет state в sessionStorage
 4. Редирект на Google для авторизации
 5. Google → редирект на callback с ?code=...&state=...
-6. Frontend извлекает code из URL
-7. Frontend → POST ?action=callback { code }
-8. Backend обменивает code на токены через Google API
+6. Frontend → POST ?action=callback { code }
+7. Backend обменивает code на токены
+8. Backend проверяет google_id → email → создаёт/привязывает пользователя
 9. Редирект на страницу профиля
 ```
-
----
-
-## Безопасность
-
-- JWT access tokens (15 мин)
-- Refresh tokens хешируются (SHA256) перед сохранением в БД
-- Автоочистка протухших токенов при каждом запросе
-- CSRF protection через state параметр
-- Параметризованные SQL-запросы (защита от SQL injection)
-- Валидация JWT_SECRET (минимум 32 символа)
-- CORS ограничение через `ALLOWED_ORIGINS`
-- Скрытие внутренних ошибок от клиента
