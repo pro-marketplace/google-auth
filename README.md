@@ -38,9 +38,12 @@ CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 >    - `https://{ваш-домен}` (например: `https://coder.arnld.ai`)
 > 8. Добавьте в **Authorized redirect URIs**:
 >    - `https://{ваш-домен}/auth/google/callback` (например: `https://coder.arnld.ai/auth/google/callback`)
-> 9. Нажмите **Create** и скопируйте **Client ID** и **Client Secret**
+> 9. Нажмите **Create**
+> 10. В появившейся модалке скопируйте **Client ID** (иконка копирования справа)
+> 11. Нажмите **OK**, затем в левом меню перейдите в **Clients**
+> 12. Нажмите на созданный клиент — там будет **Client secret**
 >
-> Пришлите мне Client ID и Client Secret когда будут готовы!
+> Пришлите мне **Client ID** и **Client Secret** когда будут готовы!
 >
 > **Примечание:** Пока приложение в режиме Testing, войти смогут только пользователи добавленные в Test users (Audience → Add users).
 
@@ -104,9 +107,18 @@ JWT_SECRET=<сгенерируй сам: 64 случайных символа>
 5. **Authorized redirect URIs** — добавь (должен ТОЧНО совпадать с `GOOGLE_REDIRECT_URI`):
    - `https://your-domain.com/auth/google/callback`
 6. Нажми **"Create"**
-7. Скопируй **Client ID** и **Client Secret**
 
-### Шаг 4: Test users (пока в режиме Testing)
+### Шаг 4: Получение Client ID и Client Secret
+
+После создания появится модалка с **Client ID** — скопируй его (иконка копирования справа).
+
+**Для получения Client Secret:**
+1. Закрой модалку (нажми OK)
+2. В левом меню перейди в **Clients**
+3. Найди созданный клиент и нажми на него
+4. На странице клиента будет **Client ID** и **Client secret** — скопируй оба
+
+### Шаг 5: Test users (пока в режиме Testing)
 
 Пока приложение в режиме **Testing**, войти могут только добавленные пользователи:
 
@@ -114,7 +126,7 @@ JWT_SECRET=<сгенерируй сам: 64 случайных символа>
 2. Нажми **"Add users"**
 3. Добавь email пользователей для тестирования
 
-### Шаг 5: Публикация (когда готов к продакшну)
+### Шаг 6: Публикация (когда готов к продакшну)
 
 Для публичного доступа:
 1. Перейди в **OAuth consent screen**
