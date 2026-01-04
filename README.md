@@ -49,16 +49,21 @@ CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
 
 ### Шаг 3: Добавление секретов
 
-**ОБЯЗАТЕЛЬНО добавь ВСЕ секреты через тулу. Покажи пользователю вызов тулы для каждого!**
+**ОБЯЗАТЕЛЬНО вызови тулу `put_secret` для КАЖДОГО секрета!**
+
+Когда пользователь пришлёт Client ID и Client Secret, вызови тулу для каждого:
 
 ```
-GOOGLE_CLIENT_ID=<Client ID от пользователя>
-GOOGLE_CLIENT_SECRET=<Client Secret от пользователя>
-GOOGLE_REDIRECT_URI=https://preview--{project}.poehali.dev/auth/google/callback
-JWT_SECRET=<сгенерируй сам: 64 случайных символа>
+put_secret("GOOGLE_CLIENT_ID", "<Client ID от пользователя>")
+put_secret("GOOGLE_CLIENT_SECRET", "<Client Secret от пользователя>")
+put_secret("GOOGLE_REDIRECT_URI", "https://{домен-пользователя}/auth/google/callback")
+put_secret("JWT_SECRET", "<сгенерируй сам: 64 случайных hex символа>")
 ```
 
-**JWT_SECRET генерируй сам**, не спрашивай у пользователя!
+**Важно:**
+- Вызывай `put_secret` для КАЖДОГО секрета отдельно
+- **JWT_SECRET генерируй сам** (например: `openssl rand -hex 32`), не спрашивай у пользователя
+- Покажи пользователю в чате каждый вызов тулы — это безопасный способ добавления секретов
 
 ### Шаг 4: Создание страниц
 
