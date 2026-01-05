@@ -187,6 +187,7 @@ export function useGoogleAuth(options: UseGoogleAuthOptions): UseGoogleAuthRetur
    * Start Google login flow - redirects to Google
    */
   const login = useCallback(async () => {
+    setIsLoading(true);
     setError(null);
 
     try {
@@ -198,6 +199,7 @@ export function useGoogleAuth(options: UseGoogleAuthOptions): UseGoogleAuthRetur
 
       if (!response.ok) {
         setError(data.error || "Failed to get auth URL");
+        setIsLoading(false);
         return;
       }
 
@@ -206,10 +208,11 @@ export function useGoogleAuth(options: UseGoogleAuthOptions): UseGoogleAuthRetur
         setStoredState(data.state);
       }
 
-      // Redirect to Google
+      // Redirect to Google (keep loading state, page will navigate away)
       window.location.href = data.auth_url;
     } catch (err) {
       setError("Network error");
+      setIsLoading(false);
     }
   }, [apiUrls.authUrl]);
 
